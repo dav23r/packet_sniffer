@@ -4,6 +4,8 @@
 
 #include <errno.h>
 
+#include <pthread.h>
+
 #include <sys/un.h>
 #include <netinet/in.h>
 #include <netinet/ip.h>
@@ -13,16 +15,19 @@
 #include <linux/if_packet.h>
 #include <net/ethernet.h> 
 
-#define MAX_FRAME_SIZE 55555
+/* MTU is long enough to accomodate packets of 
+   major link layer protocols (ethernet, wlan...) */
+#define MTU 5000
 
-/* Name of the interface sniffed on */
-static char *if_name;
+static void set_interface_mask(int);
+static void* listen_cli(void *);
+
+static int socket_fd;
 
 /* Packet sniffer daemon. */
 int main(void){
 
-    int socket_fd;
-
+    // Open socket for receiving ip packets
     socket_fd = socket(AF_PACKET, SOCK_DGRAM, htons(ETH_P_ALL));    
     if (socket_fd == -1){
         perror ("PACKET socket creation");
@@ -30,40 +35,25 @@ int main(void){
         return -1;
     }
 
-    struct sockaddr_ll if_mask;
-    memset(&if_mask, 0, sizeof if_mask);
-    if_mask.sll_protocol = htons(ETH_P_ALL);
-    if_mask.sll_ifindex = 2;
-    if_mask.sll_family = AF_PACKET;
-    int ret = bind (socket_fd, &if_mask, sizeof if_mask); 
-    if (ret == -1){
-        printf ("Error %d\n", errno);
-        perror("Wrong smth");
-    }
+    // Spawn thread which will receive signals from controlling cli
+    pthread_t signaller;
+    pthread_create (&signaller, NULL, listen_cli, NULL);
 
-
-    memset(&if_mask, 0, sizeof if_mask);
-    if_mask.sll_protocol = htons(ETH_P_ALL);
-    if_mask.sll_ifindex = 3;
-    if_mask.sll_family = AF_PACKET;
-    ret = bind (socket_fd, &if_mask, sizeof if_mask); 
-    if (ret == -1){
-        printf ("insecond\n");
-        printf ("Error %d\n", errno);
-        perror("Wrong smth");
-    }
-
-
-    char frame_buffer[MAX_FRAME_SIZE];
+    char frame_buffer[MTU];
     while (1) {
+
         int received_bytes = 
             recv(socket_fd, frame_buffer, sizeof(frame_buffer), 0);
-        printf ("After buffer filled with data, size: %d\n", received_bytes);
+        if (received_bytes == -1){
+            perror ("Receiving packet from socket");
+        }
+
         struct iphdr *header = (struct iphdr *) frame_buffer;
 
         struct in_addr source_addr, dest_addr;
         source_addr.s_addr = header->saddr;
         dest_addr.s_addr = header->daddr;
+
         printf ("Packet source addr: %s\n", inet_ntoa(source_addr));
         printf ("Packet dest addr: %s\n", inet_ntoa(dest_addr));
     }
@@ -71,3 +61,26 @@ int main(void){
     return 0;
 
 }
+
+/* Instructs socket to intercept only packets from particular interface */
+static void set_interface_mask(int if_index){
+    
+    struct sockaddr_ll if_mask;
+    memset(&if_mask, 0, sizeof if_mask);
+
+    if_mask.sll_protocol = htons(ETH_P_ALL);
+    if_mask.sll_ifindex = if_index;
+    if_mask.sll_family = AF_PACKET;
+
+    int ret = bind (socket_fd, &if_mask, sizeof if_mask); 
+    if (ret == -1){
+        perror("Binding socket to interface");
+    }
+
+}
+
+/* Listen for dbus messages from controlling cli */
+static void* listen_cli(void *data){
+    printf ("Hello\n");
+}
+

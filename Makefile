@@ -2,8 +2,13 @@
 
 CC=gcc
 
+all: packet_snifferd sniffer
+
+sniffer: sniffer.c
+	gcc sniffer.c -o sniffer
+
 packet_snifferd: packet_snifferd.c
-	gcc packet_snifferd.c -o packet_snifferd
+	gcc -pthread packet_snifferd.c -o packet_snifferd
 
 
     
