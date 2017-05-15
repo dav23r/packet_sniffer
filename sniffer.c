@@ -8,7 +8,9 @@ static void print_ip_count(char *);
 static void select_interface(char *);
 static void print_statistics(char *);
 
+/* Cli controlling daemon that sniffs packets */
 int main(int argc, char **argv){
+
     if (argc < 2 || strcmp(argv[1], "--help") == 0){
         show_usage();
         return -1;

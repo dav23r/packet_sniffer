@@ -10,16 +10,19 @@
 #include <netinet/in.h>
 #include <netinet/ip.h>
 #include <arpa/inet.h>
+#include <net/if.h>
 
 #include <sys/socket.h>
 #include <linux/if_packet.h>
 #include <net/ethernet.h> 
 
+#include "config.h"
+
 /* MTU is long enough to accomodate packets of 
    major link layer protocols (ethernet, wlan...) */
 #define MTU 5000
 
-static void set_interface_mask(int);
+static bool set_interface_mask(char *);
 static void* listen_cli(void *);
 
 static int socket_fd;
@@ -27,11 +30,21 @@ static int socket_fd;
 /* Packet sniffer daemon. */
 int main(void){
 
+    printf ("[DAEMON] Sniffer daemon about to start\n");
+
     // Open socket for receiving ip packets
     socket_fd = socket(AF_PACKET, SOCK_DGRAM, htons(ETH_P_ALL));    
     if (socket_fd == -1){
-        perror ("PACKET socket creation");
-        fprintf (stderr, "Ensure daemon is run with superuser privileges\n");
+        perror ("[DAEMON] fatal: PACKET socket creation");
+        fprintf (stderr, "[DAEMON] Ensure daemon is run with superuser privileges\n");
+        return -1;
+    }
+
+    // Read configuration file to determine interface to sniff on
+    struct config conf;
+    get_config(&conf);
+    if (!set_interface_mask(conf.if_name)){
+        fprintf (stderr, "[DAEMON] fatal: can't bind to interace set in config file\n");
         return -1;
     }
 
@@ -41,7 +54,6 @@ int main(void){
 
     char frame_buffer[MTU];
     while (1) {
-
         int received_bytes = 
             recv(socket_fd, frame_buffer, sizeof(frame_buffer), 0);
         if (received_bytes == -1){
@@ -59,12 +71,19 @@ int main(void){
     }
 
     return 0;
-
 }
 
 /* Instructs socket to intercept only packets from particular interface */
-static void set_interface_mask(int if_index){
+static bool set_interface_mask(char *if_name){
     
+    printf ("[DAEMON] Directing sinffer on %s interface\n", if_name);
+
+    int if_index = if_nametoindex(if_name);
+    if (if_index == 0){
+        fprintf (stderr, "[DAEMON] No such device in the system %s\n", if_name);
+        return false;
+    }
+
     struct sockaddr_ll if_mask;
     memset(&if_mask, 0, sizeof if_mask);
 
@@ -72,15 +91,16 @@ static void set_interface_mask(int if_index){
     if_mask.sll_ifindex = if_index;
     if_mask.sll_family = AF_PACKET;
 
-    int ret = bind (socket_fd, &if_mask, sizeof if_mask); 
+    int ret = bind (socket_fd, 
+		    (const struct sockaddr *) &if_mask, sizeof if_mask); 
     if (ret == -1){
-        perror("Binding socket to interface");
+        perror("[DAEMON] Binding socket to interface");
+        return false;
     }
-
+    
+    return true;
 }
 
 /* Listen for dbus messages from controlling cli */
-static void* listen_cli(void *data){
-    printf ("Hello\n");
-}
+static void* listen_cli(void *data){}
 
