@@ -37,15 +37,15 @@ int main(void){
     if (socket_fd == -1){
         perror ("[DAEMON] fatal: PACKET socket creation");
         fprintf (stderr, "[DAEMON] Ensure daemon is run with superuser privileges\n");
-        return -1;
+        return 1;
     }
 
     // Read configuration file to determine interface to sniff on
     struct config conf;
     get_config(&conf);
     if (!set_interface_mask(conf.if_name)){
-        fprintf (stderr, "[DAEMON] fatal: can't bind to interace set in config file\n");
-        return -1;
+        fprintf (stderr, "[DAEMON] fatal: can't bind to interface set in config file\n");
+        return 1;
     }
 
     // Spawn thread which will receive signals from controlling cli
@@ -53,12 +53,18 @@ int main(void){
     pthread_create (&signaller, NULL, listen_cli, NULL);
 
     char frame_buffer[MTU];
+    struct sockaddr_ll packet_frame_info;
+    int packet_frame_info_len = sizeof packet_frame_info;
     while (1) {
-        int received_bytes = 
-            recv(socket_fd, frame_buffer, sizeof(frame_buffer), 0);
+        int received_bytes = recvfrom(socket_fd, frame_buffer, sizeof(frame_buffer), 0, 
+                                      (struct sockaddr *) &packet_frame_info, &packet_frame_info_len);
         if (received_bytes == -1){
             perror ("Receiving packet from socket");
         }
+
+        // We are interested in only incoming packets
+        if (packet_frame_info.sll_pkttype != PACKET_HOST)
+            continue;
 
         struct iphdr *header = (struct iphdr *) frame_buffer;
 
@@ -76,7 +82,7 @@ int main(void){
 /* Instructs socket to intercept only packets from particular interface */
 static bool set_interface_mask(char *if_name){
     
-    printf ("[DAEMON] Directing sinffer on %s interface\n", if_name);
+    printf ("[DAEMON] Directing sinffer on '%s' interface\n", if_name);
 
     int if_index = if_nametoindex(if_name);
     if (if_index == 0){
