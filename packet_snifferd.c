@@ -17,6 +17,7 @@
 #include <net/ethernet.h> 
 
 #include "config.h"
+#include "statistic.h"
 
 /* MTU is long enough to accomodate packets of 
    major link layer protocols (ethernet, wlan...) */
@@ -48,6 +49,9 @@ int main(void){
         return 1;
     }
 
+    // Connect to database to be able to store statistics
+    connect_to_db();
+
     // Spawn thread which will receive signals from controlling cli
     pthread_t signaller;
     pthread_create (&signaller, NULL, listen_cli, NULL);
@@ -72,8 +76,7 @@ int main(void){
         source_addr.s_addr = header->saddr;
         dest_addr.s_addr = header->daddr;
 
-        printf ("Packet source addr: %s\n", inet_ntoa(source_addr));
-        printf ("Packet dest addr: %s\n", inet_ntoa(dest_addr));
+        add_entry(inet_ntoa(source_addr));
     }
 
     return 0;
@@ -82,7 +85,7 @@ int main(void){
 /* Instructs socket to intercept only packets from particular interface */
 static bool set_interface_mask(char *if_name){
     
-    printf ("[DAEMON] Directing sinffer on '%s' interface\n", if_name);
+    printf ("[DAEMON] Directing sniffer on '%s' interface\n", if_name);
 
     int if_index = if_nametoindex(if_name);
     if (if_index == 0){

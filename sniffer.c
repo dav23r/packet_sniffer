@@ -1,12 +1,16 @@
 #include <stdio.h>
 #include <string.h>
 
+#include "statistic.h"
+
 static void show_usage();
 static void start_daemon();
 static void stop_daemon();
-static void print_ip_count(char *);
+static void show_ip_count(char *);
 static void select_interface(char *);
 static void print_statistics(char *);
+static void reset_statistics();
+
 
 /* Cli controlling daemon that sniffs packets */
 int main(int argc, char **argv){
@@ -33,7 +37,7 @@ int main(int argc, char **argv){
             show_usage();
             return -1;
         }
-        print_ip_count(argv[2]);
+        show_ip_count(argv[2]);
     } else if (strcmp(argv[1], "select") == 0){
         if (argc != 4 || strcmp(argv[2], "iface") != 0){
             show_usage();
@@ -49,6 +53,12 @@ int main(int argc, char **argv){
         if (argc == 3)
             if_name = argv[2];
         print_statistics(if_name);
+    } else if (strcmp(argv[1], "reset") == 0){
+        if (argc != 2){
+            show_usage();
+            return -1;
+        }
+        reset_statistics();
     } else {
         show_usage();
     }
@@ -64,6 +74,7 @@ static void show_usage(){
     printf ("\tstop - stops sniffing daemon\n");
     printf ("\tshow [ip] count - prints number of packets coming from ip\n");
     printf ("\tselect iface [iface] - directs daemon so sniff packets from interface\n");
+    printf ("\treset - deletes all statistics\n");
     printf ("\tstat [iface] - show statistics of inerface, of all if omitted\n");
     printf ("\t--help - output this description message\n");
 }
@@ -77,8 +88,10 @@ static void stop_daemon(){
     printf ("Stopping daemon\n");
 }
 
-static void print_ip_count(char *ip){
+static void show_ip_count(char *ip){
+    connect_to_db();
     printf ("Showing count for %s\n", ip);
+    print_ip_count(ip);    
 }
 
 static void select_interface(char *iface){
@@ -86,10 +99,17 @@ static void select_interface(char *iface){
 }
 
 static void print_statistics(char *iface){
-    if (iface == NULL)
+    connect_to_db();
+    if (iface == NULL){
         printf ("Showing statistics for all interfaces\n");
-    else
+        print_all_statistics();
+    }
+    else {
         printf ("Showing statistics for iface %s\n", iface);
+    }
 }
 
-
+static void reset_statistics(){
+    connect_to_db();
+    reset_db();
+}

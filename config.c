@@ -36,7 +36,7 @@ bool get_config(struct config *conf){
         // Extract key and value on particular line
         int equals_index = first_equals_index(line);
         if (equals_index == -1 || equals_index == 0){
-            fprintf(stderr, "Wrong format of config file, should be `token=value`\n");
+            fprintf(stderr, "[CONFIG] Wrong format of config file, should be `token=value`\n");
             continue;
         }
         strncpy(key, line, equals_index);
@@ -47,7 +47,7 @@ bool get_config(struct config *conf){
         if (strcmp(IFACE_KEY, key) == 0){
             conf->if_name = strdup(value);
         } else {
-            fprintf(stderr, "key unrecognizable in `key=value` pair\n");
+            fprintf(stderr, "[CONFIG] key unrecognizable in `key=value` pair\n");
         }
         
     }
