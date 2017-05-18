@@ -5,6 +5,7 @@
 #include <errno.h>
 
 #include <pthread.h>
+#include <signal.h>
 
 #include <sys/un.h>
 #include <netinet/in.h>
@@ -15,6 +16,7 @@
 #include <sys/socket.h>
 #include <linux/if_packet.h>
 #include <net/ethernet.h> 
+#include <unistd.h>
 
 #include "config.h"
 #include "statistic.h"
@@ -27,11 +29,31 @@ static bool set_interface_mask(char *);
 static void* listen_cli(void *);
 
 static int socket_fd;
+static struct config *conf;
+
+void sig_term_handler(int sig_num){
+    if (socket_fd) close(socket_fd);
+    if (conf != NULL) {config_dispose(conf); free(conf);}
+    printf ("SIGTERM recieved, stopping daemon gracefully\n");
+    exit (0);
+}
+
+void sig_hup_handler(int sig_num){
+    if (conf != NULL) {
+        config_dispose(conf); 
+        free(conf);
+    }
+    conf = get_config();
+    printf ("Configuration reloaded after recieving SIGHUP");
+}
+
 
 /* Packet sniffer daemon. */
 int main(void){
 
     printf ("[DAEMON] Sniffer daemon about to start\n");
+    signal (SIGTERM, sig_term_handler);
+    signal (SIGHUP, sig_hup_handler);
 
     // Open socket for receiving ip packets
     socket_fd = socket(AF_PACKET, SOCK_DGRAM, htons(ETH_P_ALL));    
@@ -42,9 +64,8 @@ int main(void){
     }
 
     // Read configuration file to determine interface to sniff on
-    struct config conf;
-    get_config(&conf);
-    if (!set_interface_mask(conf.if_name)){
+    conf = get_config();
+    if (!set_interface_mask(conf->if_name)){
         fprintf (stderr, "[DAEMON] fatal: can't bind to interface set in config file\n");
         return 1;
     }
@@ -76,7 +97,7 @@ int main(void){
         source_addr.s_addr = header->saddr;
         dest_addr.s_addr = header->daddr;
 
-        add_entry(inet_ntoa(source_addr));
+        add_entry(inet_ntoa(source_addr), conf->if_name);
     }
 
     return 0;
@@ -106,6 +127,9 @@ static bool set_interface_mask(char *if_name){
         perror("[DAEMON] Binding socket to interface");
         return false;
     }
+
+    free(conf->if_name);
+    conf->if_name = strdup(if_name);
     
     return true;
 }

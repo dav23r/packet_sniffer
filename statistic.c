@@ -2,11 +2,14 @@
 #include <stdbool.h>
 
 #define MAX_QUERY_SIZE 1000
-#define UPDATE_QUERY "update ips set count = count + 1 where ip = '%s'; select * from ips where ip = '%s'"
+#define UPDATE_QUERY "update ips set count = count + 1 where ip = '%s' and iface = '%s'; \
+                      select * from ips where ip = '%s' and iface = '%s'"
 #define IP_QUERY "select * from ips where ip = '%s'"
-#define ADD_QUERY "insert into ips (ip, count) values ('%s', 1)"
+#define ADD_QUERY "insert into ips (ip, count, iface) values ('%s', 1, '%s')"
 #define RESET_QUERY "delete from ips"
-#define ALL_QUERY "select * from ips"
+#define ALL_QUERY "select * from ips where iface glob '%s'"
+
+#define BUSY_TIMEOUTS_MS 5000
 
 static int update_callback(void *data, int num_columns, 
                            char **column_values, char **column_names);
@@ -25,16 +28,18 @@ void connect_to_db(){
 
     if (sqlite3_open (DB_NAME, &db) != 0)
         fprintf (stderr, "[DATABASE] Unable to connect");
+
+    sqlite3_busy_timeout(db, BUSY_TIMEOUTS_MS);
 }
 
 void disconnect_from_db(){
     sqlite3_close(db);
 }
 
-void add_entry(char *ip_address){
+void add_entry(char *ip_address, char *iface){
     char query[MAX_QUERY_SIZE];
     char *error;
-    sprintf(query, UPDATE_QUERY, ip_address, ip_address);
+    sprintf(query, UPDATE_QUERY, ip_address, iface,  ip_address, iface);
 
     bool updated = false;
     if (sqlite3_exec (db, query, update_callback, (void *) &updated, &error) != 0){
@@ -43,7 +48,7 @@ void add_entry(char *ip_address){
     }
     
     if (!updated) {
-        sprintf(query, ADD_QUERY, ip_address);
+        sprintf(query, ADD_QUERY, ip_address, iface);
         if (sqlite3_exec (db, query, NULL, NULL, &error) != 0){
             fprintf (stderr, "[DATABASE] %s at 'add_entry:insert'\n", error);
             sqlite3_free(error);
@@ -62,14 +67,20 @@ void print_ip_count(char *ip_address){
     }
 }
 
-void print_all_statistics(){
+void print_all_statistics(char *iface){
     char query[MAX_QUERY_SIZE];
     char *error;
-    sprintf(query, ALL_QUERY);
+    sprintf(query, ALL_QUERY, iface != NULL ? iface : "*");
 
-    if (sqlite3_exec (db, query, show_all_callback, NULL, &error) != 0){
+    bool printed = false;
+    if (sqlite3_exec (db, query, show_all_callback, &printed, &error) != 0){
         fprintf (stderr, "[DATABASE] %s at 'show_all_stats'\n", error);
         sqlite3_free(error);
+	return;
+    }
+
+    if (!printed){
+        printf ("No data yet :(\n");
     }
 }
 
@@ -90,6 +101,7 @@ static int show_all_callback(void *data, int num_columns,
     char *ip_addr = *column_values;
     char *count_str = *(column_values + 1);
     printf ("%s	%s\n", ip_addr, count_str);
+    *(bool *) data = true;
     return 0;
 }
 

@@ -61,6 +61,7 @@ int main(int argc, char **argv){
         reset_statistics();
     } else {
         show_usage();
+        return -1;
     }
 
     return 0;
@@ -100,13 +101,11 @@ static void select_interface(char *iface){
 
 static void print_statistics(char *iface){
     connect_to_db();
-    if (iface == NULL){
+    if (iface == NULL)
         printf ("Showing statistics for all interfaces\n");
-        print_all_statistics();
-    }
-    else {
+    else 
         printf ("Showing statistics for iface %s\n", iface);
-    }
+    print_all_statistics(iface);
 }
 
 static void reset_statistics(){

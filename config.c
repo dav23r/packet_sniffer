@@ -1,6 +1,7 @@
 #include "config.h"
 #include <string.h>
 #include <stdio.h>
+#include <assert.h>
 
 #define CONFIG_FILE_PATH "/etc/sniffer/config"
 #define MAX_LINE_SIZE 256
@@ -15,7 +16,9 @@ void config_dispose(struct config *conf){
     free (conf->if_name);
 }
 
-bool get_config(struct config *conf){
+struct config* get_config(){
+    struct config *conf = malloc (sizeof (struct config));
+    assert (conf != NULL);
     // Open config file on disk
     FILE *conf_file = fopen(CONFIG_FILE_PATH, "r");
     if (conf_file == NULL){
@@ -52,7 +55,7 @@ bool get_config(struct config *conf){
         
     }
     fclose(conf_file);
-    return true;
+    return conf;
 }
 
 /* Returns index of first '=' char in line if exists, -1 otherwise */
