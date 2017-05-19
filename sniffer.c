@@ -1,6 +1,11 @@
 #include <stdio.h>
 #include <string.h>
 
+#include <assert.h>
+
+#include <dbus/dbus.h>
+
+#include "packet_snifferd.h"
 #include "statistic.h"
 
 static void show_usage();
@@ -43,7 +48,7 @@ int main(int argc, char **argv){
             show_usage();
             return -1;
         }
-        select_interface(argv[2]);
+        select_interface(argv[3]);
     } else if (strcmp(argv[1], "stat") == 0){
         char *if_name = NULL;
         if (argc > 3){
@@ -67,6 +72,7 @@ int main(int argc, char **argv){
     return 0;
 }
 
+/* Echoes usage information */
 static void show_usage(){
     printf ("Packet sniffer cli\n");
     printf ("Usage:\n");
@@ -81,22 +87,66 @@ static void show_usage(){
 }
 
 
+/* Starts sniffer daemon */
 static void start_daemon(){
     printf ("Starting daemon\n");
 }
 
+/* Stops sniffer daemon */
 static void stop_daemon(){
     printf ("Stopping daemon\n");
 }
 
+/* Prints num of hits for given ip address */
 static void show_ip_count(char *ip){
     connect_to_db();
     printf ("Showing count for %s\n", ip);
     print_ip_count(ip);    
 }
 
+/* Directs daemon to sniff on given interface */
 static void select_interface(char *iface){
     printf ("Making daemon listen to %s\n", iface);
+    // Create dbus structs
+    dbus_uint32_t id = 0;
+    DBusError error;
+    DBusConnection *connection = NULL;
+    int ret_value;
+    dbus_error_init (&error);
+    // connect to the bus
+    connection = dbus_bus_get (DBUS_BUS_SESSION, &error);
+    if (dbus_error_is_set (&error)){
+        fprintf (stderr, "fatal: Error acquiring session bus %s\n", error.message);
+        dbus_error_free (&error);
+        return;
+    }
+    // see if daemon is running
+    if (!dbus_bus_name_has_owner(connection, DESTINATION, &error)){
+        fprintf (stderr, "fatal: Daemon not running!! %s\n", error.message);
+        dbus_error_free (&error);
+        return;
+    }
+    // create message
+    DBusMessage *message;
+    message = dbus_message_new_method_call(DESTINATION, OBJECT_NAME,
+                                           INTERFACE, METHOD);
+    if (message == NULL){
+        fprintf (stderr, "fatal: Can't initiate method call\n");
+    	dbus_error_free (&error);
+        return;
+    }
+    // Add new iface name as argument to message
+    dbus_message_append_args (message, DBUS_TYPE_STRING, &iface,
+                              DBUS_TYPE_INVALID);
+    // Send message
+    if (!dbus_connection_send (connection, message, &id)){
+        fprintf (stderr, "fatal: Memory overflow");
+        dbus_error_free (&error);
+        return;
+    }
+
+    dbus_message_unref (message);
+    dbus_error_free (&error);
 }
 
 static void print_statistics(char *iface){

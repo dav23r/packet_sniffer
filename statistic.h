@@ -5,8 +5,6 @@
 #include <stddef.h>
 #include <stdio.h>
 
-#define DB_NAME "ips_database"
-
 void connect_to_db();
 void add_entry(char *ip_address, char *iface);
 void print_ip_count(char *ip_address);
