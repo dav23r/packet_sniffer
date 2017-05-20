@@ -1,0 +1,4 @@
+[D-BUS Service]
+Name=snifferd.trigger
+Exec=/bin/false
+SystemdService=packet_snifferd.service

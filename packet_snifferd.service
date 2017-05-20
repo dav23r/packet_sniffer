@@ -2,8 +2,6 @@
 Description=Ip packet sniffer daemon
 
 [Service]
-Type=dbus
-BusName=snifferd.dest
+Type=simple
 ExecStart=/usr/bin/packet_snifferd
-
 

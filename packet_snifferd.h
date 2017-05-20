@@ -6,4 +6,6 @@
 #define INTERFACE "snifferd.iface"
 #define METHOD "change_iface"
 
+#define DBUS_ACTIVATOR "snifferd.trigger"
+
 #endif

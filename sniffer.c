@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <string.h>
+#include <stdbool.h>
 
 #include <assert.h>
 
@@ -15,6 +16,8 @@ static void show_ip_count(char *);
 static void select_interface(char *);
 static void print_statistics(char *);
 static void reset_statistics();
+static bool init_dbus_connection(DBusError *, DBusConnection **, 
+                                 dbus_uint32_t *, bool check_bus, char *);
 
 
 /* Cli controlling daemon that sniffs packets */
@@ -90,6 +93,22 @@ static void show_usage(){
 /* Starts sniffer daemon */
 static void start_daemon(){
     printf ("Starting daemon\n");
+    // Create dbus structs
+    dbus_uint32_t id = 0;
+    DBusError error;
+    DBusConnection *connection = NULL;
+    
+    // initialize dbus constructs
+    if (!init_dbus_connection(&error, &connection, &id, false, NULL))
+        return;
+    // Point to the trigger 
+    dbus_bus_request_name(connection, DBUS_ACTIVATOR, 0, &error);
+    // Create dummy message
+    DBusMessage *message;
+    message = dbus_message_new_method_call(DBUS_ACTIVATOR, OBJECT_NAME,
+                                           INTERFACE, METHOD);
+    // 'knock on the door' effectively starting daemon process
+    dbus_connection_send (connection, message, &id);
 }
 
 /* Stops sniffer daemon */
@@ -104,6 +123,27 @@ static void show_ip_count(char *ip){
     print_ip_count(ip);    
 }
 
+static bool init_dbus_connection(DBusError *error, DBusConnection **connection, 
+                                 dbus_uint32_t *id, bool check_bus, 
+                                 char *well_known_name){
+    dbus_error_init (error);
+    // connect to the bus
+    *connection = dbus_bus_get (DBUS_BUS_SYSTEM, error);
+    if (dbus_error_is_set (error)){
+        fprintf (stderr, "fatal: Error acquiring system bus %s\n", error->message);
+        dbus_error_free (error);
+        return false;
+    }
+    // see if daemon is running
+    if (check_bus && !dbus_bus_name_has_owner(*connection, well_known_name, error)){
+        fprintf (stderr, "fatal: Daemon not running!! %s\n", error->message);
+        dbus_error_free (error);
+        return false;
+    }
+
+    return true;
+}
+
 /* Directs daemon to sniff on given interface */
 static void select_interface(char *iface){
     printf ("Making daemon listen to %s\n", iface);
@@ -111,21 +151,11 @@ static void select_interface(char *iface){
     dbus_uint32_t id = 0;
     DBusError error;
     DBusConnection *connection = NULL;
-    int ret_value;
-    dbus_error_init (&error);
-    // connect to the bus
-    connection = dbus_bus_get (DBUS_BUS_SYSTEM, &error);
-    if (dbus_error_is_set (&error)){
-        fprintf (stderr, "fatal: Error acquiring system bus %s\n", error.message);
-        dbus_error_free (&error);
+    
+    // initialize dbus constructs
+    if (!init_dbus_connection(&error, &connection, &id, true, DESTINATION))
         return;
-    }
-    // see if daemon is running
-    if (!dbus_bus_name_has_owner(connection, DESTINATION, &error)){
-        fprintf (stderr, "fatal: Daemon not running!! %s\n", error.message);
-        dbus_error_free (&error);
-        return;
-    }
+
     // create message
     DBusMessage *message;
     message = dbus_message_new_method_call(DESTINATION, OBJECT_NAME,

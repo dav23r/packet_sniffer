@@ -5,6 +5,7 @@ EXEC_PATH=/usr/bin
 DB_PATH=/var/lib
 SYSTEMD_UNIT_PATH=/etc/systemd/system
 CONFIG_FILE_PATH=/etc/sniffer/config
+DBUS_SERVICE_PATH=/usr/share/dbus-1/system-services/
 
 all: packet_snifferd sniffer
 
@@ -30,6 +31,7 @@ install: sniffer packet_snifferd
 	sqlite3 < init.sql
 	cp -f ips_database $(DB_PATH)
 	cp packet_snifferd.service $(SYSTEMD_UNIT_PATH)
+	cp dbus_trigger.service $(DBUS_SERVICE_PATH)
 
 
 
