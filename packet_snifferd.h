@@ -1,11 +1,15 @@
 #ifndef PACKET_SNIFFERD_H
 #define PACKET_SNIFFERD_H
 
-#define DESTINATION "snifferd.dest"
-#define OBJECT_NAME "/snifferd/obj"
-#define INTERFACE "snifferd.iface"
-#define METHOD "change_iface"
+#define SNIFFERD_DEST "snifferd.dest"
+#define MAIN_OBJECT "/snifferd/obj"
 
-#define DBUS_ACTIVATOR "snifferd.trigger"
+#define CHANGE_IFACE_INTERFACE "snifferd.iface"
+#define CHANGE_IFACE_METHOD "change_iface"
+
+#define STOP_INTERFACE "snifferd.stop"
+#define STOP_METHOD "stop"
+
+#define DBUS_ACTIVATOR_DEST "snifferd.trigger"
 
 #endif

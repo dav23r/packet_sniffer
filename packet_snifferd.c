@@ -35,18 +35,24 @@
 static bool set_interface_mask(char *);
 static bool update_iface(char *);
 static void* listen_cli(void *);
+static void terminate(int);
 
 static int socket_fd;
 static struct config *conf;
 static DBusConnection *connection;
 
 /* Terminate cleanly */
-void sig_term_handler(int sig_num){
+static void terminate(int status){
     if (socket_fd) close(socket_fd);
     if (conf != NULL) config_dispose(conf); free(conf);
     if (connection != NULL) dbus_connection_flush(connection);
+    exit(status); 
+}
+
+/* Terminate on SIGTERM */
+void sig_term_handler(int sig_num){
     printf ("SIGTERM recieved, stopping daemon gracefully\n");
-    exit (0);
+    terminate (0);
 }
 
 /* Reload configuration on SIGHUP */
@@ -157,7 +163,7 @@ static DBusHandlerResult message_receiver(DBusConnection *connection,
     GMainLoop *main_loop = aux;
     DBusError error;
 
-    if (dbus_message_is_method_call(message, INTERFACE, METHOD)){
+    if (dbus_message_is_method_call(message, CHANGE_IFACE_INTERFACE, CHANGE_IFACE_METHOD)){
         dbus_error_init (&error);
         char *iface_name;
         if (!dbus_message_get_args (message, &error, DBUS_TYPE_STRING, 
@@ -169,6 +175,9 @@ static DBusHandlerResult message_receiver(DBusConnection *connection,
                 fprintf (stderr, "[DAEMON] No iterface with name %s\n", iface_name);
             }
         }
+    } else if (dbus_message_is_method_call(message, STOP_INTERFACE, STOP_METHOD)){
+        printf ("Terminating");
+        terminate(0);
     }
     return DBUS_HANDLER_RESULT_HANDLED;
 }
@@ -191,7 +200,7 @@ static void* listen_cli(void *data){
         exit(1);
     }
 
-    dbus_bus_request_name(connection, DESTINATION, 0, &error);
+    dbus_bus_request_name(connection, SNIFFERD_DEST, 0, &error);
     if (dbus_error_is_set(&error)){
         fprintf (stderr, "[DAEMON] fatal: Name error %s\n", error.message);
         dbus_error_free (&error);
@@ -199,15 +208,17 @@ static void* listen_cli(void *data){
     }
     dbus_connection_setup_with_g_main (connection, NULL);
 
-    /* listening to messages from all objects as no path is specified */
+/*
+    /* listening to messages from all objects as no path is specified 
     char filter[MAX_FILTER_SIZE];
-    sprintf(filter, "path='%s',type='%s',interface='%s'", OBJECT_NAME, "method_call", INTERFACE);
+    sprintf(filter, "path='%s',type='%s',interface='%s'", MAIN_OBJECT, "method_call", INTERFACE);
     
     dbus_bus_add_match (connection, filter, &error);
     if (dbus_error_is_set(&error)){
         fprintf (stderr, "Error setting match: %s\n", error.message);
         exit(1);
     }
+*/
     dbus_connection_flush(connection);
     dbus_connection_add_filter (connection, message_receiver, loop, NULL);
 

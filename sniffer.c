@@ -99,21 +99,43 @@ static void start_daemon(){
     DBusConnection *connection = NULL;
     
     // initialize dbus constructs
-    if (!init_dbus_connection(&error, &connection, &id, false, NULL))
+    if (!init_dbus_connection(&error, &connection, &id, false, NULL)){
+        printf("Can send message on the bus\n"); 
         return;
+    }
+
     // Point to the trigger 
-    dbus_bus_request_name(connection, DBUS_ACTIVATOR, 0, &error);
+    dbus_bus_request_name(connection, DBUS_ACTIVATOR_DEST, 0, &error);
     // Create dummy message
     DBusMessage *message;
-    message = dbus_message_new_method_call(DBUS_ACTIVATOR, OBJECT_NAME,
-                                           INTERFACE, METHOD);
+    message = dbus_message_new_method_call(DBUS_ACTIVATOR_DEST,  // rest args are dummy
+                               MAIN_OBJECT, CHANGE_IFACE_INTERFACE, CHANGE_IFACE_METHOD);
+
     // 'knock on the door' effectively starting daemon process
     dbus_connection_send (connection, message, &id);
+    printf ("Done\n");
 }
 
 /* Stops sniffer daemon */
 static void stop_daemon(){
     printf ("Stopping daemon\n");
+    // declare dbus structs
+    dbus_uint32_t id = 0;
+    DBusError error;
+    DBusConnection *connection = NULL;
+
+    // initialize dbus constructs
+    if (!init_dbus_connection(&error, &connection, &id, true, SNIFFERD_DEST)){
+        fprintf(stderr, "Can send message on the bus\n"); 
+        return;
+    }
+    // Construct message
+    DBusMessage *stop_message;
+    stop_message = dbus_message_new_method_call(SNIFFERD_DEST, MAIN_OBJECT,
+                                                STOP_INTERFACE, STOP_METHOD);
+    // Send message
+    dbus_connection_send (connection, stop_message, &id);
+    printf ("Done\n");
 }
 
 /* Prints num of hits for given ip address */
@@ -153,13 +175,13 @@ static void select_interface(char *iface){
     DBusConnection *connection = NULL;
     
     // initialize dbus constructs
-    if (!init_dbus_connection(&error, &connection, &id, true, DESTINATION))
+    if (!init_dbus_connection(&error, &connection, &id, true, SNIFFERD_DEST))
         return;
 
     // create message
     DBusMessage *message;
-    message = dbus_message_new_method_call(DESTINATION, OBJECT_NAME,
-                                           INTERFACE, METHOD);
+    message = dbus_message_new_method_call(SNIFFERD_DEST, MAIN_OBJECT,
+                                           CHANGE_IFACE_INTERFACE, CHANGE_IFACE_METHOD);
     if (message == NULL){
         fprintf (stderr, "fatal: Can't initiate method call\n");
     	dbus_error_free (&error);
