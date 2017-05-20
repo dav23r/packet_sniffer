@@ -56,14 +56,20 @@ void add_entry(char *ip_address, char *iface){
     }
 }
 
+
 void print_ip_count(char *ip_address){
     char query[MAX_QUERY_SIZE];
     char *error;
     sprintf(query, IP_QUERY, ip_address);
     
-    if (sqlite3_exec (db, query, get_ip_callback, NULL, &error) != 0){
+    bool printed = false;
+    if (sqlite3_exec (db, query, get_ip_callback, &printed, &error) != 0){
         fprintf (stderr, "[DATABASE] %s at 'get_ip_count'\n", error);
         sqlite3_free(error);
+    }
+
+    if (printed) {
+        printf ("Ip %s is not contained in database\n", ip_address);
     }
 }
 
@@ -76,7 +82,7 @@ void print_all_statistics(char *iface){
     if (sqlite3_exec (db, query, show_all_callback, &printed, &error) != 0){
         fprintf (stderr, "[DATABASE] %s at 'show_all_stats'\n", error);
         sqlite3_free(error);
-	return;
+	    return;
     }
 
     if (!printed){
@@ -117,5 +123,6 @@ static int get_ip_callback(void *data, int num_columns,
     char *ip_addr = *column_values;
     char *count_str = *(column_values + 1);
     printf ("%s	%s\n", ip_addr, count_str);
+    *(bool *)data = true;
     return 0;
 }

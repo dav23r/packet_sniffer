@@ -114,9 +114,9 @@ static void select_interface(char *iface){
     int ret_value;
     dbus_error_init (&error);
     // connect to the bus
-    connection = dbus_bus_get (DBUS_BUS_SESSION, &error);
+    connection = dbus_bus_get (DBUS_BUS_SYSTEM, &error);
     if (dbus_error_is_set (&error)){
-        fprintf (stderr, "fatal: Error acquiring session bus %s\n", error.message);
+        fprintf (stderr, "fatal: Error acquiring system bus %s\n", error.message);
         dbus_error_free (&error);
         return;
     }

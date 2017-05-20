@@ -1,6 +1,9 @@
 [Unit]
 Description=Ip packet sniffer daemon
-After=network.target
 
 [Service]
-ExecStart=packet_snifferd
+Type=dbus
+BusName=snifferd.dest
+ExecStart=/usr/bin/packet_snifferd
+
+

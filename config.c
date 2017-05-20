@@ -3,7 +3,6 @@
 #include <stdio.h>
 #include <assert.h>
 
-#define CONFIG_FILE_PATH "/etc/sniffer/config"
 #define MAX_LINE_SIZE 256
 
 /* Possible keys of config file */

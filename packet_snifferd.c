@@ -33,6 +33,7 @@
 #define MAX_FILTER_SIZE 200
 
 static bool set_interface_mask(char *);
+static bool update_iface(char *);
 static void* listen_cli(void *);
 
 static int socket_fd;
@@ -42,8 +43,8 @@ static DBusConnection *connection;
 /* Terminate cleanly */
 void sig_term_handler(int sig_num){
     if (socket_fd) close(socket_fd);
-    if (conf != NULL) {config_dispose(conf); free(conf);}
-    dbus_connection_flush(connection);
+    if (conf != NULL) config_dispose(conf); free(conf);
+    if (connection != NULL) dbus_connection_flush(connection);
     printf ("SIGTERM recieved, stopping daemon gracefully\n");
     exit (0);
 }
@@ -62,7 +63,6 @@ void sig_hup_handler(int sig_num){
 /* Packet sniffer daemon. */
 int main(void){
 
-    printf ("[DAEMON] Sniffer daemon about to start\n");
     signal (SIGTERM, sig_term_handler);
     signal (SIGHUP, sig_hup_handler);
     signal (SIGINT, sig_term_handler);
@@ -84,7 +84,7 @@ int main(void){
 
     // Connect to database to be able to store statistics
     connect_to_db();
-
+    
     // Spawn thread which will receive signals from controlling cli
     pthread_t signaller;
     pthread_create (&signaller, NULL, listen_cli, NULL);
@@ -139,10 +139,15 @@ static bool set_interface_mask(char *if_name){
         perror("[DAEMON] Binding socket to interface");
         return false;
     }
+   
+    return true;
+}
 
+static bool update_iface(char *if_name){
+    if (!set_interface_mask(if_name))
+        return false;
     free(conf->if_name);
     conf->if_name = strdup(if_name);
-    
     return true;
 }
 
@@ -160,7 +165,7 @@ static DBusHandlerResult message_receiver(DBusConnection *connection,
             fprintf (stderr, "[DAEMON] Can't get argument of dbus method call\n");
             dbus_error_free (&error);
         } else {
-            if (!set_interface_mask(iface_name)){
+            if (!update_iface(iface_name)){
                 fprintf (stderr, "[DAEMON] No iterface with name %s\n", iface_name);
             }
         }
@@ -170,16 +175,18 @@ static DBusHandlerResult message_receiver(DBusConnection *connection,
 
 /* Listen for dbus messages from controlling cli */
 static void* listen_cli(void *data){
+    
     GMainLoop *loop;
     DBusError error;
 
     loop = g_main_loop_new (NULL, FALSE);
 
     dbus_error_init (&error);
-    connection = dbus_bus_get (DBUS_BUS_SESSION, &error);
+    connection = dbus_bus_get (DBUS_BUS_SYSTEM, &error);
     
     if (connection == NULL) {
-        fprintf (stderr, "[DAEMON] fatal: Unable to acquire session bus\n");
+        fprintf (stderr, "[DAEMON] fatal: Unable to acquire session bus: %s\n", 
+                error.message);
         dbus_error_free (&error);
         exit(1);
     }
