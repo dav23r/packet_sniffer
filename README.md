@@ -69,9 +69,36 @@ If something goes wrong, you may need to tweak path variables in
 the beginning of Makefile. With current settings the program is
 successfully deployed on Ubuntu 17.04 machine.
 
+EXAMPLE SESSION:
+```bash
+dav23r@ubuntu-s300ca:~$ sudo sniffer start
+Starting daemon
+Done
+dav23r@ubuntu-s300ca:~$ systemctl status packet_snifferd.service 
+● packet_snifferd.service - Ip packet sniffer daemon
+   Loaded: loaded (/etc/systemd/system/packet_snifferd.service; static; vendor preset: enabled)
+   Active: active (running) since Sun 2017-05-21 21:21:13 +04; 1s ago
+ Main PID: 6758 (packet_snifferd)
+    Tasks: 2 (limit: 4915)
+   Memory: 824.0K
+      CPU: 6ms
+   CGroup: /system.slice/packet_snifferd.service
+           └─6758 /usr/bin/packet_snifferd
+
+May 21 21:21:13 ubuntu-s300ca systemd[1]: Started Ip packet sniffer daemon.
+dav23r@ubuntu-s300ca:~$ sniffer stat
+Showing statistics for all interfaces
+52.35.173.218	1
+192.168.0.1	20
+162.125.18.133	2
+dav23r@ubuntu-s300ca:~$ sniffer select iface lo
+Making daemon listen to lo
+```
+
 DEPENDENCIES:
 ```
 systemd - init system
 dbus - ipc mechanism 
 glib - c api for dbus
+sqlite3 - serverless database 
 ```
