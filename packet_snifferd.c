@@ -208,17 +208,6 @@ static void* listen_cli(void *data){
     }
     dbus_connection_setup_with_g_main (connection, NULL);
 
-/*
-    /* listening to messages from all objects as no path is specified 
-    char filter[MAX_FILTER_SIZE];
-    sprintf(filter, "path='%s',type='%s',interface='%s'", MAIN_OBJECT, "method_call", INTERFACE);
-    
-    dbus_bus_add_match (connection, filter, &error);
-    if (dbus_error_is_set(&error)){
-        fprintf (stderr, "Error setting match: %s\n", error.message);
-        exit(1);
-    }
-*/
     dbus_connection_flush(connection);
     dbus_connection_add_filter (connection, message_receiver, loop, NULL);
 

@@ -5,7 +5,8 @@ EXEC_PATH=/usr/bin
 DB_PATH=/var/lib
 SYSTEMD_UNIT_PATH=/etc/systemd/system
 CONFIG_FILE_PATH=/etc/sniffer/config
-DBUS_SERVICE_PATH=/usr/share/dbus-1/system-services/
+DBUS_SERVICE_PATH=/usr/share/dbus-1/system-services
+DBUS_CONF_PATH=/etc/dbus-1/system.d
 
 all: packet_snifferd sniffer
 
@@ -32,6 +33,7 @@ install: sniffer packet_snifferd
 	cp -f ips_database $(DB_PATH)
 	cp packet_snifferd.service $(SYSTEMD_UNIT_PATH)
 	cp dbus_trigger.service $(DBUS_SERVICE_PATH)
+	cp snifferd.dest.conf $(DBUS_CONF_PATH)
 
 
 
