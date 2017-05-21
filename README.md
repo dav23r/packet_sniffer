@@ -91,7 +91,7 @@ Showing statistics for all interfaces
 52.35.173.218	1
 192.168.0.1	20
 162.125.18.133	2
-dav23r@ubuntu-s300ca:~$ sniffer select iface lo
+dav23r@ubuntu-s300ca:~$ sudo sniffer select iface lo
 Making daemon listen to lo
 ```
 
