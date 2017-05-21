@@ -32,13 +32,17 @@ dbus 'well-know-name'. When signal is received, dbus starts
 
 One can control daemon itself from systemd's systemctl
 
+```bash
 systemctl start packet_snifferd.service
 systemctl status packet_snifferd.service
 systemctl stop packet_snifferd.service
+```
 
 Sniffer (cli) can be used to start/stop daemon as well.
+```bash
 sudo sniffer start
 sudo sniffer stop
+```
 
 Note, all invocations of 'sniffer' except showing statistics
 require superuser privileges since signal should be sent over
@@ -53,15 +57,21 @@ sudo make install
 Before first start of daemon, you should create
 file in /etc/packet_snifferd/conf
 which will contain line
+```
 iface="your default iface name to monitor"
+```
 for example:
+```
 iface=wlan0
+```
 
 If something goes wrong, you may need to tweak path variables in 
 the beginning of Makefile. With current settings the program is
 successfully deployed on Ubuntu 17.04 machine.
 
 DEPENDENCIES:
+```
 systemd - init system
 dbus - ipc mechanism 
 glib - c api for dbus
+```
